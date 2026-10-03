@@ -8,3 +8,10 @@ if (File.ReadAllText(left) != "RIGHT" || File.ReadAllText(right) != "LEFT") thro
 if (Directory.EnumerateFiles(swapRoot, ".openrename-*.tmp").Any()) throw new Exception("Temporary rename files were left behind.");
 try { RenameEngine.Preview(new[] { left }, "", "x"); throw new Exception("Empty find text was accepted."); } catch (ArgumentException) { }
 Directory.Delete(swapRoot, true); Console.WriteLine("PASS: transactional swaps and temporary-file cleanup");
+
+var journalRoot = Path.Combine(Path.GetTempPath(), "openrename-journal-" + Guid.NewGuid().ToString("N")); Directory.CreateDirectory(journalRoot); var oldPath = Path.Combine(journalRoot, "before.txt"); var newPath = Path.Combine(journalRoot, "after.txt"); var journalPath = Path.Combine(journalRoot, "journal.json"); File.WriteAllText(oldPath, "data"); var journalPlan = new[] { new RenameItem(oldPath, newPath) }; var journal = new RenameJournal(journalPath);
+journal.Prepare(journalPlan); if (journal.LoadUndoPlan().Count != 0) throw new Exception("Prepared but unapplied journal offered unsafe undo."); RenameEngine.Execute(journalPlan);
+var recoveredUndo = new RenameJournal(journalPath).LoadUndoPlan(); if (recoveredUndo.Count != 1 || recoveredUndo[0].OriginalPath != newPath) throw new Exception("Completed rename was not recovered after restart."); RenameEngine.Execute(recoveredUndo); journal.Clear();
+if (!File.Exists(oldPath) || File.Exists(journalPath)) throw new Exception("Recovered undo or journal cleanup failed.");
+File.WriteAllText(journalPath, "damaged"); try { journal.LoadUndoPlan(); throw new Exception("Damaged journal was accepted."); } catch (InvalidDataException) { }
+Directory.Delete(journalRoot, true); Console.WriteLine("PASS: persistent undo recovery, unapplied-state safety, and damaged-journal rejection");
