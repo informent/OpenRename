@@ -33,11 +33,17 @@ public partial class MainWindow : Window
         if (folder is null) return;
         try
         {
-            plan = RenameEngine.Validate(RenameEngine.Preview(Directory.EnumerateFiles(folder), FindBox.Text, ReplaceBox.Text));
+            if (!RenameEngine.TryPreview(Directory.EnumerateFiles(folder), FindBox.Text, ReplaceBox.Text, out plan, out var error))
+            {
+                PreviewList.ItemsSource = Array.Empty<string>();
+                CountText.Text = "No valid preview";
+                StatusText.Text = error ?? "Preview could not be created.";
+                return;
+            }
             PreviewList.ItemsSource = plan.Select(x => $"{Path.GetFileName(x.OriginalPath)}  →  {Path.GetFileName(x.ProposedPath)}").ToArray();
             CountText.Text = $"{plan.Count:N0} files"; StatusText.Text = "Preview ready";
         }
-        catch (Exception ex) { StatusText.Text = ex.Message; }
+        catch (Exception ex) { plan = Array.Empty<RenameItem>(); PreviewList.ItemsSource = Array.Empty<string>(); CountText.Text = "No valid preview"; StatusText.Text = ex.Message; }
     }
     private void Apply_Click(object sender, RoutedEventArgs e)
     {
