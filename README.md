@@ -6,4 +6,6 @@ Version 1.0 executes each batch as a two-phase transaction. File swaps and case-
 
 Version 1.1 persists the last rename transaction in an atomic local journal. Undo survives an application restart, prepared-but-unapplied operations are ignored safely, and mixed or damaged journal states disable automatic undo instead of guessing.
 
+Version 1.2 clears stale rename actions whenever a new preview is invalid, preventing a failed preview from leaving an older executable plan available to run. Regression tests cover a valid preview followed by an invalid one. Windows release builds run the engine tests, publish a self-contained executable, and smoke-test its launch before attaching the ZIP and SHA-256 file to the tagged release.
+
 MIT licensed.
