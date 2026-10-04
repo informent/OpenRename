@@ -6,6 +6,22 @@ public sealed record RenameItem(string OriginalPath, string ProposedPath);
 
 public static class RenameEngine
 {
+    public static bool TryPreview(IEnumerable<string> paths, string find, string replace, out IReadOnlyList<RenameItem> plan, out string? error)
+    {
+        try
+        {
+            plan = Validate(Preview(paths, find, replace));
+            error = null;
+            return true;
+        }
+        catch (Exception ex) when (ex is ArgumentException or IOException or UnauthorizedAccessException or InvalidOperationException)
+        {
+            plan = Array.Empty<RenameItem>();
+            error = ex.Message;
+            return false;
+        }
+    }
+
     public static IReadOnlyList<RenameItem> Preview(IEnumerable<string> paths, string find, string replace)
     {
         ArgumentNullException.ThrowIfNull(paths);
